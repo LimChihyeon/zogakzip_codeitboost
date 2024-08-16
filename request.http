@@ -10,7 +10,7 @@ Content-Type: application/json
 }
 
 ###
-GET http://localhost:3000/api/groups?page=1&pageSize=10&sortBy=latest&keyword=new&isPublic=true
+GET http://localhost:3000/api/groups?page=1&pageSize=10&sortBy=latest&keyword=string&isPublic=true
 
 ###
 PUT http://localhost:3000/api/groups/3 
@@ -43,3 +43,5 @@ Content-Type: application/json
 {
   "password": "string"
 }
+###
+POST http://localhost:3000/api/groups/4/like

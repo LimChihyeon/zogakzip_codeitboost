@@ -378,10 +378,38 @@ router.post("/:groupId/verify-password", (req, res) => {
     res.status(200).json({ message: "비밀번호가 확인되었습니다" });
   });
 });
-// 그룹 공감하기
+
+//그룹 공감
 router.post("/:groupId/like", (req, res) => {
   const { groupId } = req.params;
-  res.send(`Group ${groupId} liked`);
+
+  // 그룹 존재 여부 확인
+  const checkQuery = `SELECT * FROM \`groups\` WHERE id = ?`;
+  pool.query(checkQuery, [groupId], (checkError, checkResults) => {
+    if (checkError) {
+      console.error("Error executing check query:", checkError);
+      return res
+        .status(500)
+        .json({ message: "서버 내부 오류가 발생했습니다." });
+    }
+
+    if (checkResults.length === 0) {
+      return res.status(404).json({ message: "존재하지 않습니다" });
+    }
+
+    // 그룹의 likeCount 증가
+    const updateQuery = `UPDATE \`groups\` SET likeCount = likeCount + 1 WHERE id = ?`;
+    pool.query(updateQuery, [groupId], (updateError, updateResults) => {
+      if (updateError) {
+        console.error("Error executing update query:", updateError);
+        return res
+          .status(500)
+          .json({ message: "서버 내부 오류가 발생했습니다." });
+      }
+
+      res.status(200).json({ message: "그룹 공감하기 성공" });
+    });
+  });
 });
 
 // 그룹 공개 여부 확인
