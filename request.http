@@ -8,3 +8,6 @@ Content-Type: application/json
 	"isPublic": true,
 	"introduction": "string"
 }
+
+###
+GET http://localhost:3000/api/groups?page=1&pageSize=10&sortBy=latest&keyword=string&isPublic=true

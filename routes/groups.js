@@ -31,6 +31,7 @@ router.post("/", (req, res) => {
   const query = `INSERT INTO \`groups\` (name, password, imageUrl, isPublic, introduction, likeCount, postCount, createdAt) 
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
 
+  console.log("새 그룹을 데이터베이스에 삽입 시도 중...");
   pool.query(
     query,
     [
@@ -56,8 +57,102 @@ router.post("/", (req, res) => {
 });
 
 // 그룹 목록 조회
+// 그룹 목록 조회
 router.get("/", (req, res) => {
-  res.send("Group list");
+  const {
+    page = 1,
+    pageSize = 10,
+    sortBy = "latest",
+    keyword = "",
+    isPublic,
+  } = req.query;
+
+  // 기본 쿼리문 작성
+  let query = `SELECT * FROM \`groups\``;
+  let queryParams = [];
+
+  // 공개 여부 필터링
+  if (typeof isPublic !== "undefined") {
+    query += ` WHERE isPublic = ?`;
+    queryParams.push(isPublic === "true" ? 1 : 0);
+  }
+
+  // 검색어 필터링
+  if (keyword) {
+    if (queryParams.length > 0) {
+      query += ` AND name LIKE ?`;
+    } else {
+      query += ` WHERE name LIKE ?`;
+    }
+    queryParams.push(`%${keyword}%`);
+  }
+
+  // 정렬 기준
+  switch (sortBy) {
+    case "latest":
+      query += ` ORDER BY createdAt DESC`;
+      break;
+    case "mostLiked":
+      query += ` ORDER BY likeCount DESC`;
+      break;
+    case "mostPosted":
+      query += ` ORDER BY postCount DESC`;
+      break;
+    case "mostBadge":
+      query += ` ORDER BY badgeCount DESC`;
+      break;
+    default:
+      query += ` ORDER BY createdAt DESC`;
+  }
+
+  // 페이지네이션 적용
+  const offset = (page - 1) * pageSize;
+  query += ` LIMIT ?, ?`;
+  queryParams.push(offset, parseInt(pageSize, 10));
+
+  // 총 아이템 수 구하기 위한 쿼리
+  let countQuery = `SELECT COUNT(*) as totalItemCount FROM \`groups\``;
+  let countQueryParams = [];
+
+  if (typeof isPublic !== "undefined") {
+    countQuery += ` WHERE isPublic = ?`;
+    countQueryParams.push(isPublic === "true" ? 1 : 0);
+  }
+
+  if (keyword) {
+    if (countQueryParams.length > 0) {
+      countQuery += ` AND name LIKE ?`;
+    } else {
+      countQuery += ` WHERE name LIKE ?`;
+    }
+    countQueryParams.push(`%${keyword}%`);
+  }
+
+  // 총 아이템 수 조회
+  pool.query(countQuery, countQueryParams, (error, countResults) => {
+    if (error) {
+      console.error("Error executing count query:", error);
+      return res.status(500).json({ message: "Internal server error" });
+    }
+
+    const totalItemCount = countResults[0].totalItemCount;
+    const totalPages = Math.ceil(totalItemCount / pageSize);
+
+    // 그룹 데이터 조회
+    pool.query(query, queryParams, (error, results) => {
+      if (error) {
+        console.error("Error executing query:", error);
+        return res.status(500).json({ message: "Internal server error" });
+      }
+
+      res.status(200).json({
+        currentPage: parseInt(page, 10),
+        totalPages: totalPages,
+        totalItemCount: totalItemCount,
+        data: results,
+      });
+    });
+  });
 });
 
 // 그룹 수정
