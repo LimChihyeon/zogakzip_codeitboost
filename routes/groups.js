@@ -23,13 +23,14 @@ router.post("/", (req, res) => {
     imageUrl,
     isPublic,
     introduction,
+    badges: JSON.stringify([]), // 빈 배열을 JSON 문자열로 변환
     likeCount: 0,
     postCount: 0,
     createdAt: new Date(),
   };
 
-  const query = `INSERT INTO \`groups\` (name, password, imageUrl, isPublic, introduction, likeCount, postCount, createdAt) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+  const query = `INSERT INTO \`groups\` (name, password, imageUrl, isPublic, introduction, badges, likeCount, postCount, createdAt) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
   console.log("새 그룹을 데이터베이스에 삽입 시도 중...");
   pool.query(
@@ -40,6 +41,7 @@ router.post("/", (req, res) => {
       newGroup.imageUrl,
       newGroup.isPublic,
       newGroup.introduction,
+      newGroup.badges,
       newGroup.likeCount,
       newGroup.postCount,
       newGroup.createdAt,
@@ -47,16 +49,18 @@ router.post("/", (req, res) => {
     (error, results) => {
       if (error) {
         console.error(error);
-        return res.status(500).json({ message: "Internal server error" });
+        return res
+          .status(500)
+          .json({ message: "서버 내부 오류가 발생했습니다." });
       }
 
       newGroup.id = results.insertId;
+      newGroup.badges = [];
       res.status(201).json(newGroup);
     }
   );
 });
 
-// 그룹 목록 조회
 // 그룹 목록 조회
 router.get("/", (req, res) => {
   const {
@@ -68,7 +72,7 @@ router.get("/", (req, res) => {
   } = req.query;
 
   // 기본 쿼리문 작성
-  let query = `SELECT * FROM \`groups\``;
+  let query = `SELECT id, name, imageUrl, isPublic, likeCount, postCount, createdAt, introduction, badges FROM \`groups\``;
   let queryParams = [];
 
   // 공개 여부 필터링
@@ -145,21 +149,47 @@ router.get("/", (req, res) => {
         return res.status(500).json({ message: "Internal server error" });
       }
 
+      // 각 그룹의 배지 개수 계산 및 응답 데이터 변환
+      const modifiedResults = results.map((group) => {
+        let badgeCount = 0;
+
+        // badges 필드가 존재하고, 유효한 JSON 문자열일 경우 파싱하여 배지 개수 계산
+        if (group.badges) {
+          try {
+            const badgesArray = JSON.parse(group.badges);
+            if (Array.isArray(badgesArray)) {
+              badgeCount = badgesArray.length;
+            }
+          } catch (e) {
+            console.error("Error parsing badges JSON:", e);
+          }
+        }
+
+        return {
+          id: group.id,
+          name: group.name,
+          imageUrl: group.imageUrl,
+          isPublic: !!group.isPublic, // 숫자 1 또는 0을 boolean 값으로 변환
+          likeCount: group.likeCount,
+          badgeCount: badgeCount, // 배지 개수를 추가
+          postCount: group.postCount,
+          createdAt: group.createdAt,
+          introduction: group.introduction,
+        };
+      });
+
       res.status(200).json({
         currentPage: parseInt(page, 10),
         totalPages: totalPages,
         totalItemCount: totalItemCount,
-        data: results,
+        data: modifiedResults,
       });
     });
   });
 });
 
-// 그룹 수정
-router.put("/:groupId", (req, res) => {
-  const { groupId } = req.params;
-  res.send(`Group ${groupId} updated`);
-});
+//그룹 수정
+router.put("/:groupId", (req, res) => {});
 
 // 그룹 삭제
 router.delete("/:groupId", (req, res) => {
