@@ -321,7 +321,34 @@ router.delete("/:groupId", (req, res) => {
 // 그룹 상세 정보 조회
 router.get("/:groupId", (req, res) => {
   const { groupId } = req.params;
-  res.send(`Group ${groupId} details`);
+
+  // groupId 검증
+  if (!groupId || isNaN(groupId)) {
+    return res.status(400).json({ message: "잘못된 요청입니다" });
+  }
+
+  const query = `SELECT id, name, imageUrl, isPublic, likeCount, postCount, createdAt, introduction, badges 
+                 FROM \`groups\` 
+                 WHERE id = ?`;
+
+  pool.query(query, [groupId], (error, results) => {
+    if (error) {
+      console.error("Error executing query:", error);
+      return res
+        .status(500)
+        .json({ message: "서버 내부 오류가 발생했습니다." });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({ message: "존재하지 않습니다" });
+    }
+
+    const group = results[0];
+    group.isPublic = !!group.isPublic; // 숫자 1 또는 0을 boolean 값으로 변환
+    group.badges = JSON.parse(group.badges || "[]"); // badges 필드를 JSON 배열로 파싱
+
+    res.status(200).json(group);
+  });
 });
 
 // 그룹 조회 권한 확인
