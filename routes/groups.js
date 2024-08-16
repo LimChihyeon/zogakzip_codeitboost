@@ -256,7 +256,66 @@ router.put("/:groupId", (req, res) => {
 // 그룹 삭제
 router.delete("/:groupId", (req, res) => {
   const { groupId } = req.params;
-  res.send(`Group ${groupId} deleted`);
+  const { password } = req.body;
+
+  // 요청 본문 검증
+  if (!password) {
+    return res.status(400).json({ message: "잘못된 요청입니다" });
+  }
+
+  // 그룹 ID 존재 여부 확인
+  const checkExistenceQuery = `SELECT * FROM \`groups\` WHERE id = ?`;
+  pool.query(
+    checkExistenceQuery,
+    [groupId],
+    (existenceError, existenceResults) => {
+      if (existenceError) {
+        console.error("Error executing existence check query:", existenceError);
+        return res
+          .status(500)
+          .json({ message: "서버 내부 오류가 발생했습니다." });
+      }
+
+      if (existenceResults.length === 0) {
+        return res.status(404).json({ message: "존재하지 않습니다" });
+      }
+
+      // 비밀번호 확인
+      const checkPasswordQuery = `SELECT * FROM \`groups\` WHERE id = ? AND password = ?`;
+      pool.query(
+        checkPasswordQuery,
+        [groupId, password],
+        (passwordError, passwordResults) => {
+          if (passwordError) {
+            console.error(
+              "Error executing password check query:",
+              passwordError
+            );
+            return res
+              .status(500)
+              .json({ message: "서버 내부 오류가 발생했습니다." });
+          }
+
+          if (passwordResults.length === 0) {
+            return res.status(403).json({ message: "비밀번호가 틀렸습니다" });
+          }
+
+          // 그룹 삭제
+          const deleteQuery = `DELETE FROM \`groups\` WHERE id = ?`;
+          pool.query(deleteQuery, [groupId], (deleteError, deleteResults) => {
+            if (deleteError) {
+              console.error("Error executing delete query:", deleteError);
+              return res
+                .status(500)
+                .json({ message: "서버 내부 오류가 발생했습니다." });
+            }
+
+            res.status(200).json({ message: "그룹 삭제 성공" });
+          });
+        }
+      );
+    }
+  );
 });
 
 // 그룹 상세 정보 조회
