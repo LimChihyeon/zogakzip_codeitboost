@@ -10,15 +10,15 @@ Content-Type: application/json
 }
 
 ###
-GET http://localhost:3000/api/groups?page=1&pageSize=10&sortBy=latest&keyword=string&isPublic=true
+GET http://localhost:3000/api/groups?page=1&pageSize=10&sortBy=latest&keyword=dfdfdf&isPublic=true
 
 ###
-PUT http://localhost:3000/api/groups/1 
+PUT http://localhost:3000/api/groups/3 
 Content-Type: application/json
 
 {
-  "name": "new",
-  "password": "1234",
+  "name": "dfdfdf",
+  "password": "string",
   "imageUrl": "1234",
   "isPublic": true,
   "introduction": "yaho"
