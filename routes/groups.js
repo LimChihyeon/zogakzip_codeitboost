@@ -354,9 +354,30 @@ router.get("/:groupId", (req, res) => {
 // 그룹 조회 권한 확인
 router.post("/:groupId/verify-password", (req, res) => {
   const { groupId } = req.params;
-  res.send(`Password verified for group ${groupId}`);
-});
+  const { password } = req.body;
 
+  // 요청 본문 검증
+  if (!password) {
+    return res.status(400).json({ message: "잘못된 요청입니다" });
+  }
+
+  const query = `SELECT * FROM \`groups\` WHERE id = ? AND password = ?`;
+
+  pool.query(query, [groupId, password], (error, results) => {
+    if (error) {
+      console.error("Error executing query:", error);
+      return res
+        .status(500)
+        .json({ message: "서버 내부 오류가 발생했습니다." });
+    }
+
+    if (results.length === 0) {
+      return res.status(401).json({ message: "비밀번호가 틀렸습니다" });
+    }
+
+    res.status(200).json({ message: "비밀번호가 확인되었습니다" });
+  });
+});
 // 그룹 공감하기
 router.post("/:groupId/like", (req, res) => {
   const { groupId } = req.params;
